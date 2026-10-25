@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WayDrive - Cloud File Explorer & Vault</title>
+    
+    <!-- External Libraries & Frameworks -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
+    <!-- Modular Custom Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            450: '#fb923c',
+                            550: '#eab308',
+                        },
+                        obsidian: {
+                            800: '#161622',
+                            850: '#101018',
+                            900: '#0a0a0f',
+                            950: '#050508',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+<!-- AC_SECURITY_START -->
+<link rel="stylesheet" href="/security-shield.css">
+<script src="/security-shield.js" defer></script>
+<!-- AC_SECURITY_END -->
+</head>
+<body class="bg-[#060609] text-slate-100 min-h-screen relative overflow-x-hidden pb-12 select-none">
+
+    <!-- Decorative ambient glow elements (Gold & Warm Amber) -->
+    <div class="absolute top-[-10%] right-[-10%] w-[550px] h-[550px] rounded-full bg-amber-500/[0.035] blur-[140px] pointer-events-none"></div>
+    <div class="absolute bottom-[20%] left-[-10%] w-[650px] h-[650px] rounded-full bg-emerald-500/[0.025] blur-[160px] pointer-events-none"></div>
+
+    <!-- Layout Container -->
+    <div class="min-h-screen flex flex-col lg:flex-row relative z-10">
+
+        <!-- Mobile Drawer Backdrop -->
+        <div id="sidebarBackdrop" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm hidden transition-opacity duration-300 opacity-0" onclick="window.toggleSidebar()"></div>
+
+        <!-- Sidebar Navigation (Left) -->
+        <aside id="sidebar" class="fixed top-0 left-0 z-50 w-72 h-screen bg-[#09090f]/90 backdrop-blur-2xl border-r border-white/[0.04] p-6 flex flex-col justify-between transform -translate-x-full transition-all duration-300 ease-in-out shrink-0">
+            <div class="flex flex-col gap-6">
+                <!-- Branding -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gradient-to-tr from-amber-500 via-amber-600 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/15">
+                            <i class="fas fa-folder-tree text-lg text-slate-950 font-black"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 bg-clip-text text-transparent leading-none">WayDrive</h1>
+                            <p class="text-[10px] text-amber-500/80 mt-1 uppercase tracking-widest font-semibold font-mono">Cloud File Explorer</p>
+                        </div>
+                    </div>
+                    <button onclick="window.toggleSidebar()" class="p-2 text-slate-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-xl transition" title="Close Sidebar">
+                        <i class="fas fa-chevron-left text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Navigation List -->
+                <nav class="flex flex-col gap-1.5">
+                    <button onclick="window.navigateToRoot()" class="w-full text-left px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold text-xs flex items-center gap-3 transition duration-150 shadow-sm hover:bg-amber-500/15">
+                        <i class="fas fa-hdd text-sm w-5 text-center"></i>
+                        <span>My Drive (Root)</span>
+                    </button>
+
+                    <button onclick="window.openReelzFolder()" class="w-full text-left px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.03] text-xs font-semibold flex items-center gap-3 transition duration-150 border border-transparent hover:border-white/5">
+                        <i class="fas fa-film text-amber-400 w-5 text-center"></i>
+                        <span>Reelz Vault</span>
+                        <span id="sidebarReelzBadge" class="ml-auto text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-mono font-bold">45</span>
+                    </button>
+
+                    <button onclick="window.syncWithArchiveOrg()" class="w-full text-left px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.03] text-xs font-semibold flex items-center gap-3 transition duration-150 border border-transparent hover:border-white/5">
+                        <i class="fas fa-sync text-cyan-400 w-5 text-center" id="sideSyncIcon"></i>
+                        <span>Sync Archive.org</span>
+                    </button>
+
+                    <button onclick="window.openSettingsModal()" class="w-full text-left px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.03] text-xs font-semibold flex items-center gap-3 transition duration-150 border border-transparent hover:border-white/5">
+                        <i class="fas fa-sliders text-amber-400 w-5 text-center"></i>
+                        <span>Cloud & VFS Settings</span>
+                    </button>
+
+                    <!-- Quick Folders Tree in Sidebar -->
+                    <div class="mt-2 pt-3 border-t border-white/[0.03] flex flex-col gap-1.5">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold px-2">Folders Tree</p>
+                        <div id="sidebarFoldersTree" class="flex flex-col gap-1 max-h-36 overflow-y-auto pr-1">
+                            <!-- Folders populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Account & Connection Info -->
+                    <div class="mt-2 px-4 py-3 rounded-xl bg-white/[0.015] border border-white/[0.03] flex flex-col gap-2.5">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Archive Owner</p>
+                            <p id="ownerNameDisplay" class="text-xs font-semibold text-slate-200 mt-0.5 truncate font-mono">Not Configured</p>
+                        </div>
+                        <div class="border-t border-white/[0.03] pt-2">
+                            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Engines</p>
+                            <div class="flex flex-col gap-1 mt-1">
+                                <div class="flex items-center gap-2 text-[10px] font-medium text-emerald-400">
+                                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                    <span id="vfsEngineStatusLabel">Local Browser VFS</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] font-medium text-amber-400">
+                                    <span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                                    <span id="s3EngineStatusLabel">Archive.org S3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Storage details (Sidebar bottom widget) -->
+            <div class="flex flex-col gap-3 bg-white/[0.015] border border-white/[0.03] p-4 rounded-2xl">
+                <div class="flex items-center gap-2 text-amber-400">
+                    <i class="fas fa-chart-pie text-xs"></i>
+                    <span class="text-xs font-bold uppercase tracking-wider">Drive Statistics</span>
+                </div>
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span id="totalSizeStat" class="text-sm font-bold text-slate-200">0 Bytes</span>
+                        <span class="text-[10px] text-slate-400">Total Stored</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                        <div id="sidebarStorageBar" class="bg-gradient-to-r from-amber-500 to-emerald-500 h-full w-full transition-all duration-300"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-white/[0.03]">
+                    <div>
+                        <span class="text-slate-500 block">Total Folders</span>
+                        <span id="totalArchivesStat" class="font-bold text-amber-400 font-mono">0</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block">Total Files</span>
+                        <span id="totalFilesStat" class="font-bold text-slate-200 font-mono">0</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area (Right) -->
+        <div id="mainContentArea" class="flex-1 min-w-0 flex flex-col transition-all duration-300 ease-in-out">
+
+            <!-- Header top bar -->
+            <header class="h-16 px-6 lg:px-8 border-b border-white/[0.03] flex items-center justify-between bg-[#07070c]/70 backdrop-blur-md sticky top-0 z-40">
+                <div class="flex items-center gap-4">
+                    <!-- Sidebar Toggle Button -->
+                    <button onclick="window.toggleSidebar()" class="p-2 text-slate-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-xl transition flex items-center justify-center" title="Toggle Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <h2 id="topBarTitle" class="text-lg font-bold text-slate-100 hidden sm:block truncate max-w-sm">My Drive</h2>
+                        <span id="activeArchiveBadge" class="hidden text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono font-semibold"></span>
+                    </div>
+                </div>
+
+                <!-- Toolbar controls -->
+                <div class="flex items-center gap-2.5">
+                    <!-- Cloud Settings Button -->
+                    <button onclick="window.openSettingsModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-slate-200 text-xs font-semibold transition" title="Configure Archive.org S3 & VFS Engine">
+                        <i class="fas fa-key text-amber-400"></i>
+                        <span class="hidden sm:inline">Settings</span>
+                    </button>
+
+                    <!-- Quick Sync Button -->
+                    <button onclick="window.syncWithArchiveOrg()" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-xs font-semibold transition" title="Sync with Archive.org">
+                        <i class="fas fa-cloud-arrow-down" id="quickSyncIcon"></i>
+                        <span>Sync</span>
+                    </button>
+
+                    <!-- Sort Selector Dropdown -->
+                    <div class="relative" id="sortDropdownContainer">
+                        <button id="sortDropdownBtn" class="p-2 rounded-lg text-slate-300 hover:text-white text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 h-8 px-2.5 bg-white/[0.02] border border-white/5 hover:bg-white/[0.05]" title="Sort Items">
+                            <i class="fas fa-arrow-down-wide-short text-amber-400 text-xs"></i>
+                            <span id="currentSortLabel" class="hidden sm:inline text-[11px] font-medium">Newest First</span>
+                        </button>
+                        <div id="sortDropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-[#0a0a10] border border-white/10 rounded-xl shadow-2xl z-50 py-1.5 backdrop-blur-xl">
+                            <button onclick="window.setSortMode('date-desc')" class="w-full text-left px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] flex items-center justify-between">
+                                <span>🕒 Newest First (الأحدث)</span>
+                                <i class="fas fa-check text-amber-400 text-[10px]" id="sortCheck-date-desc"></i>
+                            </button>
+                            <button onclick="window.setSortMode('date-asc')" class="w-full text-left px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] flex items-center justify-between">
+                                <span>🕒 Oldest First (الأقدم)</span>
+                                <i class="fas fa-check text-amber-400 text-[10px] hidden" id="sortCheck-date-asc"></i>
+                            </button>
+                            <div class="h-px bg-white/[0.04] my-1"></div>
+                            <button onclick="window.setSortMode('name-asc')" class="w-full text-left px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] flex items-center justify-between">
+                                <span>🔤 Name (A - Z)</span>
+                                <i class="fas fa-check text-amber-400 text-[10px] hidden" id="sortCheck-name-asc"></i>
+                            </button>
+                            <button onclick="window.setSortMode('name-desc')" class="w-full text-left px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] flex items-center justify-between">
+                                <span>🔤 Name (Z - A)</span>
+                                <i class="fas fa-check text-amber-400 text-[10px] hidden" id="sortCheck-name-desc"></i>
+                            </button>
+                            <div class="h-px bg-white/[0.04] my-1"></div>
+                            <button onclick="window.setSortMode('size-desc')" class="w-full text-left px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] flex items-center justify-between">
+                                <span>📦 Size (Largest)</span>
+                                <i class="fas fa-check text-amber-400 text-[10px] hidden" id="sortCheck-size-desc"></i>
+                            </button>
+                            <button onclick="window.setSortMode('size-asc')" class="w-full text-left px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.04] flex items-center justify-between">
+                                <span>📦 Size (Smallest)</span>
+                                <i class="fas fa-check text-amber-400 text-[10px] hidden" id="sortCheck-size-asc"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center bg-white/[0.02] p-1 rounded-xl border border-white/5 gap-1">
+                        <!-- View on Archive.org live button (shown when inside an archive) -->
+                        <a id="openArchiveExternalBtn" href="#" target="_blank" class="hidden p-2 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-white/[0.04] text-xs font-semibold transition-all duration-200 flex items-center justify-center w-8 h-8" title="View live page on Archive.org">
+                            <i class="fas fa-external-link-alt text-xs"></i>
+                        </a>
+
+                        <!-- View switcher toggles -->
+                        <button id="listViewBtn" class="p-2 rounded-lg text-slate-400 hover:text-slate-200 text-xs font-semibold transition-all duration-200 flex items-center justify-center w-8 h-8" title="List View">
+                            <i class="fas fa-list"></i>
+                        </button>
+                        <button id="gridViewBtn" class="p-2 rounded-lg text-amber-400 bg-white/[0.04] text-xs font-semibold transition-all duration-200 flex items-center justify-center w-8 h-8" title="Grid View">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+
+                        <span class="w-px h-4 bg-white/5 mx-1"></span>
+
+                        <!-- Toggle System & Derivative Files -->
+                        <button id="toggleSystemBtn" onclick="window.toggleSystemFiles()" class="p-2 rounded-lg text-slate-400 hover:text-slate-200 text-xs font-semibold transition-all duration-200 flex items-center justify-center w-8 h-8" title="Toggle System Files (.xml, .sqlite, .torrent, .thumbs)">
+                            <i class="fas fa-cogs"></i>
+                        </button>
+
+                        <!-- Refresh Data -->
+                        <button onclick="window.refreshActiveView()" class="p-2 rounded-lg text-slate-400 hover:text-slate-200 text-xs font-semibold transition-all duration-200 flex items-center justify-center w-8 h-8" title="Refresh Drive">
+                            <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Explorer content wrapper -->
+            <main class="flex-1 p-6 lg:p-8 flex flex-col gap-5 max-w-6xl w-full mx-auto">
+                
+                <!-- Controls Row: Search & Add button -->
+                <div class="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white/[0.01] border border-white/[0.03] p-4 rounded-2xl glass-panel">
+                    <!-- Search input -->
+                    <div class="relative w-full sm:w-80">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                            <i class="fas fa-search text-xs"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="w-full bg-[#050508]/60 hover:bg-[#07070e]/80 focus:bg-[#080812] border border-white/5 focus:border-amber-500/50 focus:outline-none rounded-xl py-2 pl-9 pr-4 text-xs text-slate-200 transition-all duration-300 font-medium" placeholder="Search files and folders...">
+                    </div>
+
+                    <!-- Add new button (Dropdown) -->
+                    <div class="relative inline-block text-left w-full sm:w-auto shrink-0" id="newDropdownContainer">
+                        <button id="newDropdownBtn" class="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold py-2 px-5 rounded-xl shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 text-xs">
+                            <i class="fas fa-plus"></i> <span id="newBtnLabel">New</span>
+                        </button>
+                        <div id="newDropdownMenu" class="hidden absolute right-0 sm:left-auto mt-2 w-52 bg-[#0a0a10] border border-white/10 rounded-xl shadow-2xl z-20 py-1.5 transform scale-95 opacity-0 transition-all duration-200 backdrop-blur-xl">
+                            <!-- Option 1: New Folder -->
+                            <button onclick="window.promptNewFolder()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.04] hover:text-white transition flex items-center gap-2.5">
+                                <i class="fas fa-folder-plus text-amber-400 text-xs w-4"></i> New Folder
+                            </button>
+                            <div class="h-px bg-white/[0.04] my-1"></div>
+                            <!-- Option 2: Upload Files -->
+                            <button onclick="window.triggerFileInput()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.04] hover:text-white transition flex items-center gap-2.5">
+                                <i class="fas fa-file-upload text-emerald-400 text-xs w-4"></i> Upload Files
+                            </button>
+                            <!-- Option 3: Upload Folder -->
+                            <button onclick="window.triggerFolderInput()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.04] hover:text-white transition flex items-center gap-2.5">
+                                <i class="fas fa-folder-open text-amber-300 text-xs w-4"></i> Upload Folder
+                            </button>
+                            <div class="h-px bg-white/[0.04] my-1"></div>
+                            <!-- Option 4: Sync with Archive.org -->
+                            <button onclick="window.syncWithArchiveOrg()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.04] hover:text-white transition flex items-center gap-2.5">
+                                <i class="fas fa-cloud-arrow-down text-cyan-400 text-xs w-4"></i> Sync Archive.org
+                            </button>
+                            <!-- Option 5: New Archive Item -->
+                            <button onclick="window.promptNewArchive()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.04] hover:text-white transition flex items-center gap-2.5">
+                                <i class="fas fa-box-open text-amber-500 text-xs w-4"></i> New Archive Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OS / Phone / Server Style Interactive Path Bar -->
+                <div class="flex items-center justify-between bg-white/[0.015] border border-white/[0.03] px-4 py-2.5 rounded-xl gap-3">
+                    <div class="flex items-center gap-2 overflow-x-auto min-w-0 py-0.5 flex-1" id="breadcrumbs" style="scrollbar-width: none;">
+                        <!-- Breadcrumbs injected dynamically -->
+                    </div>
+
+                    <!-- Server / Phone Path Display & Actions -->
+                    <div class="flex items-center gap-1.5 shrink-0 pl-2 border-l border-white/5">
+                        <span id="rawPathDisplay" class="hidden font-mono text-[11px] text-slate-400 bg-black/40 px-2.5 py-1 rounded-lg border border-white/5 select-all truncate max-w-xs">/WayDrive/</span>
+                        <button onclick="window.togglePathMode()" class="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-white/5 text-xs transition" title="Toggle Terminal / Raw Path View">
+                            <i class="fas fa-terminal"></i>
+                        </button>
+                        <button onclick="window.copyCurrentPath()" class="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-white/5 text-xs transition" title="Copy Current Path">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hidden Input elements for file and folder selections -->
+                <input type="file" id="fileInput" class="hidden" multiple>
+                <input type="file" id="folderInput" class="hidden" webkitdirectory directory multiple>
+
+                <!-- Explorer Area for Mouse Marquee Selection -->
+                <div id="explorerArea" class="relative min-h-[400px] flex flex-col gap-6">
+                    
+                    <!-- Drag marquee selection box element -->
+                    <div id="selection-marquee" class="hidden"></div>
+
+                    <!-- Folders Section -->
+                    <div id="foldersSection" class="hidden flex flex-col gap-3">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                            <span class="flex items-center gap-2">
+                                <i class="fas fa-folder text-amber-400 text-sm"></i> Folders
+                            </span>
+                            <span id="foldersCountBadge" class="text-[11px] text-slate-500 font-mono font-medium lowercase">0 folders</span>
+                        </div>
+                        <div id="foldersGridBody" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <!-- Folder cards injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Files Section -->
+                    <div id="filesSection" class="hidden flex flex-col gap-3">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                            <span class="flex items-center gap-2">
+                                <i class="fas fa-file-alt text-amber-400 text-sm"></i> Files
+                            </span>
+                            <span id="filesCountBadge" class="text-[11px] text-slate-500 font-mono font-medium lowercase">0 files</span>
+                        </div>
+
+                        <!-- List Explorer View (Table Container) -->
+                        <div id="fileTableContainer" class="hidden overflow-x-auto border border-white/[0.03] rounded-2xl bg-white/[0.01] shadow-2xl">
+                            <table class="min-w-full divide-y divide-white/[0.03]">
+                                <thead class="bg-white/[0.02]">
+                                    <tr>
+                                        <th class="px-5 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-12">
+                                            <input type="checkbox" id="selectAllCheckbox" onclick="window.toggleSelectAll(this)" class="w-4 h-4 rounded border-white/10 bg-slate-900 text-amber-500 focus:ring-amber-500 transition duration-200">
+                                        </th>
+                                        <th class="px-5 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Name</th>
+                                        <th class="px-5 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-28">Size</th>
+                                        <th class="px-5 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-36">Format</th>
+                                        <th class="px-5 py-3.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-20">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fileListBody" class="divide-y divide-white/[0.02]">
+                                    <!-- Rows injected dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Grid Explorer View Container -->
+                        <div id="fileGridContainer" class="">
+                            <div id="fileGridBody" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                <!-- Card blocks injected dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State Placeholder -->
+                    <div id="emptyStateContainer" class="hidden py-20 flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-slate-500 mb-4">
+                            <i class="fas fa-folder-open text-2xl"></i>
+                        </div>
+                        <h4 class="text-sm font-semibold text-slate-300">This folder is empty</h4>
+                        <p class="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">Drop files here to upload or click New to create folders and upload files.</p>
+                    </div>
+
+                </div>
+
+            </main>
+        </div>
+
+    </div>
+
+    <!-- File Inspector / Details Slide-over Drawer (Server & Phone Details Experience) -->
+    <div id="fileDetailsDrawer" class="drawer-closed fixed top-0 right-0 z-50 w-full sm:w-96 h-screen bg-[#09090f]/95 backdrop-blur-2xl border-l border-white/[0.06] p-6 flex flex-col justify-between shadow-2xl">
+        <div class="flex flex-col gap-5 overflow-y-auto pr-1">
+            <div class="flex items-center justify-between pb-3 border-b border-white/5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-200">Item Information</span>
+                </div>
+                <button onclick="window.closeDetailsDrawer()" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Preview Image / Icon Container -->
+            <div id="drawerPreviewContainer" class="w-full aspect-video rounded-xl bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center relative">
+                <!-- Preview injected dynamically -->
+            </div>
+
+            <!-- Title & Name -->
+            <div>
+                <p class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Name</p>
+                <h3 id="drawerItemName" class="text-sm font-semibold text-slate-100 mt-0.5 break-all font-mono">file.mp4</h3>
+            </div>
+
+            <!-- Properties List -->
+            <div class="flex flex-col gap-3 bg-white/[0.015] border border-white/[0.03] p-4 rounded-xl text-xs">
+                <div>
+                    <span class="text-slate-500 text-[10px] uppercase font-bold block">Virtual Path</span>
+                    <span id="drawerItemPath" class="text-amber-400 font-mono text-[11px] break-all block mt-0.5 select-all">/WayDrive/</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/[0.03]">
+                    <div>
+                        <span class="text-slate-500 text-[10px] uppercase font-bold block">Size</span>
+                        <span id="drawerItemSize" class="text-slate-200 font-mono font-medium block mt-0.5">--</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 text-[10px] uppercase font-bold block">Type</span>
+                        <span id="drawerItemType" class="text-slate-200 font-mono uppercase block mt-0.5">--</span>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-white/[0.03]">
+                    <span class="text-slate-500 text-[10px] uppercase font-bold block">Storage Engine / Archive</span>
+                    <span id="drawerItemArchive" class="text-slate-300 font-mono text-[11px] block mt-0.5 break-all">--</span>
+                </div>
+                <div class="pt-2 border-t border-white/[0.03]">
+                    <span class="text-slate-500 text-[10px] uppercase font-bold block">Modified Date</span>
+                    <span id="drawerItemDate" class="text-slate-400 text-[11px] block mt-0.5">--</span>
+                </div>
+            </div>
+
+            <!-- Direct Stream / Download Link -->
+            <div id="drawerLinkSection">
+                <span class="text-slate-500 text-[10px] uppercase font-bold block mb-1">Direct Stream Link</span>
+                <div class="flex items-center gap-1.5 bg-[#050508] border border-white/5 rounded-xl p-1.5">
+                    <input type="text" id="drawerItemLinkInput" readonly class="bg-transparent text-[10px] font-mono text-slate-400 flex-1 px-2 focus:outline-none select-all truncate">
+                    <button onclick="window.copyDrawerLink()" class="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-lg transition shrink-0">
+                        Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drawer Actions -->
+        <div class="pt-4 border-t border-white/5 flex flex-col gap-2">
+            <button id="drawerOpenBtn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/15">
+                <i class="fas fa-play text-xs"></i> <span>Open / Play</span>
+            </button>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="drawerMoveBtn" class="py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 text-slate-300 hover:text-white text-[11px] font-semibold transition flex items-center justify-center gap-1">
+                    <i class="fas fa-folder-tree text-amber-400 text-[10px]"></i> Move
+                </button>
+                <button id="drawerRenameBtn" class="py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 text-slate-300 hover:text-white text-[11px] font-semibold transition flex items-center justify-center gap-1">
+                    <i class="fas fa-pen text-blue-400 text-[10px]"></i> Rename
+                </button>
+                <button id="drawerDeleteBtn" class="py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-[11px] font-semibold transition flex items-center justify-center gap-1">
+                    <i class="fas fa-trash text-rose-400 text-[10px]"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Move to Folder Modal -->
+    <div id="moveModal" class="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#0a0a10]/95 border border-white/10 rounded-3xl max-w-md w-full p-6 mx-4 shadow-2xl transform scale-95 transition-all duration-300" id="moveModalCard">
+            <div class="flex items-center gap-3 text-amber-400 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                    <i class="fas fa-folder-tree text-base"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-100">Move Item</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Select destination folder:</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 mb-6">
+                <!-- Folder Picker List -->
+                <div class="max-h-60 overflow-y-auto bg-[#050508] border border-white/5 rounded-2xl p-2 flex flex-col gap-1" id="moveDestinationList">
+                    <!-- Folders injected dynamically -->
+                </div>
+                <p id="moveSelectedTargetLabel" class="text-[11px] text-amber-400 font-semibold px-1">Selected destination: <span class="text-white">My Drive (Root)</span></p>
+            </div>
+
+            <div class="flex justify-end gap-2.5">
+                <button id="cancelMoveBtn" class="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 text-slate-300 rounded-xl transition text-xs font-semibold">Cancel</button>
+                <button id="confirmMoveBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold rounded-xl transition text-xs flex items-center gap-2 shadow-lg shadow-amber-500/15">
+                    <i class="fas fa-check text-[10px]"></i> Move Here
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global context menu / actions dropdown -->
+    <div id="globalActionMenu" class="hidden absolute bg-[#0a0a10]/95 border border-white/10 rounded-xl shadow-2xl z-50 py-1.5 backdrop-blur-xl w-52"></div>
+
+    <!-- Drag & Drop overlay indicator -->
+    <div id="globalDragOverlay" class="fixed inset-0 bg-amber-950/20 backdrop-blur-md border-2 border-dashed border-amber-500/40 z-50 flex flex-col items-center justify-center hidden opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-[#09090f]/95 border border-white/10 p-8 rounded-3xl text-center shadow-2xl flex flex-col items-center gap-4 max-w-xs transform scale-95 transition-all duration-300">
+            <div class="w-16 h-16 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-2xl flex items-center justify-center animate-bounce">
+                <i class="fas fa-cloud-upload-alt text-3xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-100">Upload to Drive</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">Drop files inside this window to import them to the active directory.</p>
+        </div>
+    </div>
+
+    <!-- Floating upload progress widget -->
+    <div id="uploadProgressWidget" class="fixed bottom-6 right-6 z-40 bg-[#0a0a10]/95 border border-white/10 w-80 rounded-2xl shadow-2xl overflow-hidden hidden transform translate-y-2 opacity-0 transition-all duration-300 backdrop-blur-xl">
+        <div class="flex justify-between items-center bg-white/[0.02] px-4 py-3 border-b border-white/[0.03]">
+            <span class="text-xs font-bold text-slate-200" id="widgetTitle">Uploading file...</span>
+            <button onclick="window.closeProgressWidget()" class="text-slate-400 hover:text-white transition">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-400 shrink-0">
+                    <i class="fas fa-file-upload text-sm"></i>
+                </div>
+                <div class="min-w-0 flex-1 text-left">
+                    <p class="text-xs font-semibold text-slate-200 truncate font-mono" id="widgetFileName" dir="ltr">file.zip</p>
+                    <p class="text-[10px] text-slate-400 font-medium mt-0.5" id="widgetFileSize">0 Bytes</p>
+                </div>
+            </div>
+            <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-white/[0.01]">
+                <div id="widgetProgressBar" class="bg-amber-500 h-full w-0 transition-all duration-200"></div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] text-slate-400">
+                <span id="widgetStatusText">Starting upload...</span>
+                <span id="widgetProgressPercent" class="font-bold text-amber-400 font-mono">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Toast system container -->
+    <div id="toastContainer" class="fixed bottom-6 left-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Confirm delete custom dialog -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#0a0a10]/95 border border-white/10 rounded-3xl max-w-md w-full p-6 mx-4 shadow-2xl transform scale-95 transition-all duration-300" id="confirmModalCard">
+            <div class="flex items-center gap-3 text-rose-500 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+                    <i class="fas fa-exclamation-triangle text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold">Confirm Deletion</h3>
+            </div>
+            <p class="text-slate-300 text-xs mb-4 leading-relaxed text-left">
+                Are you sure you want to delete <span id="confirmModalFileName" class="font-bold text-white break-all font-mono" dir="ltr"></span>?
+            </p>
+            <div class="flex items-center gap-2 mb-6">
+                <input type="checkbox" id="deleteS3Checkbox" checked class="w-4 h-4 rounded border-white/10 bg-slate-900 text-rose-500 focus:ring-rose-500">
+                <label for="deleteS3Checkbox" class="text-[11px] text-slate-400">Also delete raw file from Archive.org storage</label>
+            </div>
+            <div class="flex justify-end gap-2.5">
+                <button id="cancelDeleteBtn" class="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 text-slate-300 rounded-xl transition text-xs font-semibold">Cancel</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition text-xs font-semibold flex items-center gap-2 shadow-lg shadow-rose-600/15">
+                    <i class="fas fa-trash text-[10px]"></i> Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Folder Modal -->
+    <div id="newFolderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#0a0a10]/95 border border-white/10 rounded-3xl max-w-md w-full p-6 mx-4 shadow-2xl transform scale-95 transition-all duration-300" id="newFolderModalCard">
+            <div class="flex items-center gap-3 text-amber-400 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                    <i class="fas fa-folder-plus text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold">New Folder</h3>
+            </div>
+            
+            <div class="flex flex-col gap-4 mb-6 text-left">
+                <div>
+                    <label for="newFolderNameInput" class="block text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Folder Name</label>
+                    <input type="text" id="newFolderNameInput" class="w-full bg-[#050508] border border-white/10 focus:border-amber-500/50 focus:outline-none rounded-xl py-2 px-3 text-xs text-slate-200 transition-all duration-300 font-medium" placeholder="e.g. My Vault">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2.5">
+                <button id="cancelNewFolderBtn" class="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 text-slate-300 rounded-xl transition text-xs font-semibold">Cancel</button>
+                <button id="confirmNewFolderBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold rounded-xl transition text-xs flex items-center gap-2 shadow-lg shadow-amber-500/15">
+                    <i class="fas fa-check text-[10px]"></i> Create
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Item Modal -->
+    <div id="renameModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#0a0a10]/95 border border-white/10 rounded-3xl max-w-md w-full p-6 mx-4 shadow-2xl transform scale-95 transition-all duration-300" id="renameModalCard">
+            <div class="flex items-center gap-3 text-amber-400 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                    <i class="fas fa-pen text-base"></i>
+                </div>
+                <h3 class="text-lg font-bold">Rename</h3>
+            </div>
+            
+            <div class="flex flex-col gap-4 mb-6 text-left">
+                <div>
+                    <label for="renameItemInput" class="block text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Name</label>
+                    <input type="text" id="renameItemInput" class="w-full bg-[#050508] border border-white/10 focus:border-amber-500/50 focus:outline-none rounded-xl py-2 px-3 text-xs text-slate-200 transition-all duration-300 font-medium" placeholder="Enter name">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2.5">
+                <button id="cancelRenameBtn" class="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 text-slate-300 rounded-xl transition text-xs font-semibold">Cancel</button>
+                <button id="confirmRenameBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold rounded-xl transition text-xs flex items-center gap-2 shadow-lg shadow-amber-500/15">
+                    <i class="fas fa-save text-[10px]"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Archive.org Progress Modal -->
+    <div id="syncProgressModal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#0a0a10]/95 border border-white/10 rounded-3xl max-w-md w-full p-6 mx-4 shadow-2xl transform scale-95 transition-all duration-300 text-center" id="syncProgressModalCard">
+            <div class="w-14 h-14 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <i class="fas fa-cloud-arrow-down text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-100">Syncing with Archive.org</h3>
+            <p class="text-xs text-slate-400 mt-1 mb-5" id="syncProgressDetail">Scanning your Archive items, titles, and thumbnails...</p>
+            
+            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-white/[0.03] mb-3">
+                <div id="syncProgressBar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full w-0 transition-all duration-300"></div>
+            </div>
+
+            <div class="flex justify-between items-center text-[11px] text-slate-400 font-mono">
+                <span id="syncProgressText">Scanning Archive.org...</span>
+                <span id="syncProgressPercent" class="font-bold text-amber-400">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Archive Modal -->
+    <div id="createArchiveModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#0a0a10]/95 border border-white/10 rounded-3xl max-w-md w-full p-6 mx-4 shadow-2xl transform scale-95 transition-all duration-300" id="createArchiveModalCard">
+            <div class="flex items-center gap-3 text-amber-400 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                    <i class="fas fa-box-open text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold">Create New Archive Item</h3>
+            </div>
+            
+            <div class="flex flex-col gap-4 mb-6 text-left">
+                <div>
+                    <label for="archiveIdentifierInput" class="block text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Archive Identifier (Slug)</label>
+                    <input type="text" id="archiveIdentifierInput" class="w-full bg-[#050508] border border-white/10 focus:border-amber-500/50 focus:outline-none rounded-xl py-2 px-3 text-xs text-slate-200 transition-all duration-300 font-mono" placeholder="my-unique-archive-2026">
+                    <p class="text-[10px] text-slate-500 mt-1">Lowercase letters, numbers, and dashes only.</p>
+                </div>
+                <div>
+                    <label for="archiveTitleInput" class="block text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Display Title</label>
+                    <input type="text" id="archiveTitleInput" class="w-full bg-[#050508] border border-white/10 focus:border-amber-500/50 focus:outline-none rounded-xl py-2 px-3 text-xs text-slate-200 transition-all duration-300" placeholder="My Archive Title">
+                </div>
+                <div>
+                    <label for="archiveMediatypeSelect" class="block text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Mediatype</label>
+                    <select id="archiveMediatypeSelect" class="w-full bg-[#050508] border border-white/10 focus:border-amber-500/50 focus:outline-none rounded-xl py-2 px-3 text-xs text-slate-200 transition-all duration-300">
+                        <option value="data">Data / Mixed Files</option>
+                        <option value="movies">Movies / Video</option>
+                        <option value="audio">Audio / Music</option>
+                        <option value="texts">Texts / Books</option>
+                        <option value="software">Software / Programs</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2.5">
+                <button id="cancelCreateArchiveBtn" class="px-4 py-2 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 text-slate-300 rounded-xl transition text-xs font-semibold">Cancel</button>
+                <button id="confirmCreateArchiveBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl transition text-xs flex items-center gap-2 shadow-lg shadow-amber-500/10">
+                    <i class="fas fa-check text-[10px]"></i> Create Archive
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Media Player streaming modal -->
+    <div id="mediaPlayerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#09090f] border border-white/10 rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl mx-4 transform scale-95 transition-all duration-300" id="mediaPlayerCard">
+            <!-- Player Header -->
+            <div class="flex justify-between items-center p-5 border-b border-white/[0.04]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center" id="playerTypeIcon">
+                        <i class="fas fa-play"></i>
+                    </div>
+                    <div>
+                        <span id="playerTitle" class="text-sm font-semibold text-slate-200 truncate max-w-sm font-mono block text-left" dir="ltr">file.mp4</span>
+                        <span id="playerSubtitle" class="text-[10px] text-amber-400/80 font-sans block text-left mt-0.5">Internet Archive Stream</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <!-- Video/Audio Mode Toggle button -->
+                    <button id="playerModeToggleBtn" onclick="window.togglePlayerMode()" class="h-8 px-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-300 transition flex items-center justify-center gap-1.5 font-semibold" title="Switch Video / Audio Mode">
+                        <i class="fas fa-video text-xs text-amber-400"></i> <span id="playerModeToggleText">Video</span>
+                    </button>
+                    <!-- Open in New Tab button -->
+                    <button id="playerNewTabBtn" onclick="window.openMediaInNewTab()" class="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/5 text-slate-400 hover:text-white transition flex items-center justify-center" title="Open Media in New Tab">
+                        <i class="fas fa-external-link-alt text-xs"></i>
+                    </button>
+                    <!-- Playback Speed button -->
+                    <button id="playerSpeedBtn" onclick="window.togglePlayerSpeed()" class="h-8 px-2 rounded-lg bg-white/[0.02] border border-white/5 text-[11px] text-slate-400 hover:text-white transition flex items-center justify-center font-mono font-semibold" title="Playback Speed">1.0x</button>
+                    <!-- Loop toggle button inside modal header -->
+                    <button id="playerLoopBtn" onclick="window.togglePlayerLoop()" class="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/5 text-slate-400 hover:text-white transition flex items-center justify-center" title="Repeat Mode">
+                        <i class="fas fa-redo text-xs"></i>
+                    </button>
+                    <!-- Picture in Picture button -->
+                    <button id="playerPipBtn" onclick="window.togglePlayerPip()" class="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/5 text-slate-400 hover:text-white transition flex items-center justify-center" title="Picture in Picture">
+                        <i class="fas fa-clone text-xs"></i>
+                    </button>
+                    <!-- Minimize/Dock button -->
+                    <button id="playerMinimizeBtn" onclick="window.togglePlayerMinimize()" class="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/5 text-slate-400 hover:text-white transition flex items-center justify-center" title="Minimize/Dock Player">
+                        <i class="fas fa-compress-alt text-xs"></i>
+                    </button>
+                    <!-- Close button -->
+                    <button onclick="window.closeMediaPlayer()" class="w-8 h-8 rounded-lg bg-white/[0.02] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/5 transition flex items-center justify-center relative z-50 cursor-pointer" title="Close Player">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Player Screen -->
+            <div class="p-6 flex flex-col items-center justify-center bg-black/20">
+                <div id="videoPlayerContainer" class="w-full max-h-[70vh] hidden rounded-xl overflow-hidden border border-white/5 bg-black flex items-center justify-center">
+                    <video id="videoPlayer" class="w-full h-full" controls></video>
+                </div>
+                <div id="audioPlayerContainer" class="w-full py-8 px-4 hidden flex flex-col items-center gap-6">
+                    <div id="audioPlayerDisc" class="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 animate-pulse transition-all duration-300">
+                        <i class="fas fa-music text-3xl text-slate-950"></i>
+                    </div>
+                    <audio id="audioPlayer" class="w-full max-w-md" controls></audio>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Viewer modal -->
+    <div id="pdfViewerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-all duration-300">
+        <div class="bg-[#09090f] border border-white/10 rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-2xl mx-4 transform scale-95 transition-all duration-300" id="pdfViewerCard">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-5 border-b border-white/[0.04]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-file-pdf text-lg"></i>
+                    </div>
+                    <span id="pdfViewerTitle" class="text-sm font-semibold text-slate-200 truncate max-w-md font-mono" dir="ltr">document.pdf</span>
+                </div>
+                <button onclick="window.closePdfViewer()" class="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] text-slate-400 hover:text-white transition flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- Frame Container -->
+            <div class="flex-1 bg-[#050508] p-2">
+                <iframe id="pdfFrame" class="w-full h-full rounded-xl border border-white/5 bg-[#09090f]" src=""></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating selection action bar -->
+    <div id="selectionBar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0a0a10]/95 border border-white/10 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 transition-all duration-300 transform translate-y-10 opacity-0">
+        <span class="text-xs font-semibold text-slate-300 font-sans" id="selectionCount">0 items selected</span>
+        <span class="w-px h-4 bg-white/5"></span>
+        <div class="flex items-center gap-2">
+            <button onclick="window.promptMoveSelected()" class="text-xs font-bold text-amber-400 hover:text-white bg-amber-500/10 hover:bg-amber-600 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Move selected items">
+                <i class="fas fa-folder-tree text-xs"></i> Move
+            </button>
+            <button onclick="window.downloadSelectedAsZip()" class="text-xs font-bold text-slate-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Download selected as ZIP">
+                <i class="fas fa-file-archive text-xs"></i> Download ZIP
+            </button>
+            <button onclick="window.deleteSelected()" class="text-xs font-bold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Delete selected items">
+                <i class="fas fa-trash text-xs"></i> Delete
+            </button>
+            <button onclick="window.clearSelection()" class="text-xs font-semibold text-slate-400 hover:text-slate-200 px-3 py-2 rounded-xl transition">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- Cloud Credentials & VFS Engine Onboarding Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-all duration-250 p-4">
+        <div id="settingsModalCard" class="bg-[#0b0b12] border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl transform scale-95 transition-all duration-250">
+            <div class="p-6 border-b border-white/[0.05] flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                        <i class="fas fa-cloud-bolt text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100">WayDrive Cloud & VFS Setup</h3>
+                        <p class="text-[11px] text-slate-400">Connect your official Archive.org S3 keys & Virtual File System engine</p>
+                    </div>
+                </div>
+                <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] text-slate-400 hover:text-white flex items-center justify-center transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <!-- 1. Archive.org S3 Credentials -->
+                <div class="p-4 rounded-2xl bg-white/[0.015] border border-white/[0.05] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-400">1. Internet Archive S3 API Keys (IAS3)</span>
+                        <a href="https://archive.org/account/s3.php" target="_blank" rel="noopener" class="text-[11px] text-cyan-400 hover:underline font-medium flex items-center gap-1">
+                            <span>Get Free Keys</span>
+                            <i class="fas fa-external-link-alt text-[9px]"></i>
+                        </a>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1 font-medium">S3 Access Key</label>
+                            <input id="inputS3AccessKey" type="text" placeholder="e.g. USLiFbc..." class="w-full px-3.5 py-2 rounded-xl bg-[#07070c] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500/50" />
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1 font-medium">S3 Secret Key</label>
+                            <input id="inputS3SecretKey" type="password" placeholder="••••••••••••" class="w-full px-3.5 py-2 rounded-xl bg-[#07070c] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500/50" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1 font-medium">Default Upload Bucket Identifier (Optional)</label>
+                        <input id="inputDefaultBucket" type="text" placeholder="e.g. waydrive-vault-myname" class="w-full px-3.5 py-2 rounded-xl bg-[#07070c] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500/50" />
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-[10px] text-slate-500">Keys are stored strictly in your browser's localStorage.</span>
+                        <button type="button" onclick="window.testArchiveS3Connection()" class="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold transition flex items-center gap-1.5">
+                            <i class="fas fa-plug text-[10px]"></i>
+                            <span>Test S3 & Queue Limit</span>
+                        </button>
+                    </div>
+                    <div id="s3TestResultBox" class="hidden"></div>
+                </div>
+
+                <!-- 2. VFS Metadata Engine -->
+                <div class="p-4 rounded-2xl bg-white/[0.015] border border-white/[0.05] space-y-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 block">2. Virtual File System (VFS) Engine</span>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1 font-medium">Metadata Storage Mode</label>
+                        <select id="selectVfsMode" onchange="window.toggleFirebaseConfigSection(this.value)" class="w-full px-3.5 py-2.5 rounded-xl bg-[#07070c] border border-white/10 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-500/50">
+                            <option value="local">⚡ Local Browser VFS (Zero-Setup — Instant Start with S3 Keys Only)</option>
+                            <option value="firebase">☁️ Firebase Firestore VFS (Realtime Multi-Device Cloud Sync)</option>
+                        </select>
+                    </div>
+
+                    <div id="firebaseConfigSection" class="hidden space-y-2 pt-1">
+                        <label class="block text-[11px] text-slate-400 font-medium">Firebase Config JSON (`firebaseConfig`)</label>
+                        <textarea id="inputFirebaseJson" rows="5" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "..."}' class="w-full p-3 rounded-xl bg-[#07070c] border border-white/10 text-[11px] text-slate-200 font-mono focus:outline-none focus:border-amber-500/50"></textarea>
+                        <p class="text-[10px] text-slate-500">Paste your Firebase Web App config object. WayDrive stores virtual folders, custom names, and thumbnail URLs (< 500 bytes/file) in the <code>waydrive_items</code> collection.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-5 bg-[#08080e] border-t border-white/[0.05] flex items-center justify-end gap-2.5">
+                <button onclick="window.closeSettingsModal()" class="px-4 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] text-slate-300 text-xs font-semibold transition">
+                    Cancel
+                </button>
+                <button onclick="window.saveWayDriveSettings()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 transition flex items-center gap-2">
+                    <i class="fas fa-check"></i>
+                    <span>Save & Connect</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third-Party Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+
+    <!-- Firebase SDKs (Compat for zero-build & file:// protocol compatibility) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- Modular Application Scripts (Strict Dependency Order) -->
+    <script src="js/config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/selection.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
